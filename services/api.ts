@@ -1,6 +1,6 @@
 import axios from "axios";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { supabase } from "@/lib/supabase";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://kishansathi-backend-production.up.railway.app";
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -9,13 +9,25 @@ export const api = axios.create({
 });
 
 // Attach JWT from localStorage
-api.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("kisansathi_token");
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+api.interceptors.request.use(
+  async (config) => {
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const token = session?.access_token;
+
+    console.log("SUPABASE TOKEN:", token);
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Chat API
 export const chatAPI = {
@@ -89,3 +101,16 @@ export const mandiAPI = {
   getCommodities: () => api.get("/api/mandi/commodities"),
 };
 
+// Farm Health Score API
+export const farmHealthAPI = {
+  getScore: (city: string = "Jalandhar") =>
+    api.get("/api/farm-health/score", { params: { city } }),
+};
+
+
+
+
+
+export const activeCropAPI = {
+  get: () => api.get("/api/active-crop/"),
+};
