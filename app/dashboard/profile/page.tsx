@@ -145,22 +145,24 @@ export default function ProfilePage() {
     }));
 
     // Load extra fields from farmer_profiles table
-    supabase
-      .from("farmer_profiles")
-      .select("*")
-      .eq("user_id", user.id)
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          setProfile(p => ({
-            ...p,
-            phone:       data.phone        ?? "",
-            location:    data.location     ?? "",
-            farmSize:    data.farm_size    ?? "",
-            primaryCrop: data.primary_crop ?? "",
-          }));
-        }
-      });
+   api.get("/api/profile/me")
+  .then((res) => {
+
+    const data = res.data;
+
+    if (data) {
+      setProfile(p => ({
+        ...p,
+        phone:       data.phone || "",
+        location:    data.location || "",
+        farmSize:    data.farm_size || "",
+        primaryCrop: data.primary_crop || "",
+      }));
+    }
+  })
+  .catch((err) => {
+    console.error("Profile load error:", err);
+  });
 
     // Load history items
     loadHistory();

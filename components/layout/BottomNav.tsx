@@ -106,7 +106,7 @@ export default function BottomNav() {
               onClick={handleLogout}
               disabled={loggingOut}
               style={{
-                display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
+                display: "flex",  alignItems: "center", gap: "6px",
                 padding: "14px 8px", borderRadius: "14px", cursor: loggingOut ? "wait" : "pointer",
                 background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.18)",
                 color: "#F87171", fontFamily: "inherit", width: "100%",

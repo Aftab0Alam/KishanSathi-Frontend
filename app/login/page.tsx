@@ -38,17 +38,43 @@ export default function LoginPage() {
   useEffect(() => { setMounted(true); }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    const { error } = await signIn(email, password);
+  e.preventDefault();
+
+  setLoading(true);
+  setError("");
+
+  try {
+    const {data, error } = await signIn(email, password);
+
     if (error) {
-      setError(error.toLowerCase().includes("invalid") ? "Invalid email or password. Please try again." : error);
+      setError(
+        error.toLowerCase().includes("invalid")
+          ? "Invalid email or password. Please try again."
+          : error
+      );
+
       setLoading(false);
-    } else {
-      router.push("/dashboard");
+      return;
     }
-  };
+
+    // SAVE TOKEN
+    if (data?.session?.access_token) {
+      localStorage.setItem(
+        "kisansathi_token",
+        data.session.access_token
+      );
+    }
+
+    router.push("/dashboard");
+
+  } catch (err) {
+    setError("Login failed");
+    setLoading(false);
+  }
+};
+
+
+
 
   const handleGoogle = async () => {
     setGoogleLoading(true);
@@ -114,7 +140,7 @@ export default function LoginPage() {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
               <label style={{ color: "#94A3B8", fontSize: "12px", fontWeight: 600, letterSpacing: "0.04em" }}>PASSWORD</label>
-              <Link href="/login" style={{ fontSize: "12px", color: "#4ADE80", textDecoration: "none" }}>Forgot password?</Link>
+              <Link href="/forgot-password" style={{ fontSize: "12px", color: "#4ADE80", textDecoration: "none" }}>Forgot password?</Link>
             </div>
             <div style={{ position: "relative" }}>
               <Lock size={15} color="#64748B" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />

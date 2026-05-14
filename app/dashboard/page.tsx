@@ -11,7 +11,22 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import { weatherAPI, mandiAPI, profileAPI } from "@/services/api";
+import {
+  weatherAPI,
+  mandiAPI,
+  farmHealthAPI,
+  activeCropAPI,
+} from "@/services/api";
+
+
+
+
+
+
+
+
+
+
 
 /* ── helpers ── */
 function getGreeting(name: string) {
@@ -42,7 +57,7 @@ const QUICK_ACTIONS = [
   { href: "/dashboard/disease",    icon: Camera,        label: "Scan Plant",     desc: "Detect diseases",      color: "#1a2e1a", border: "#2d4d2d", iconColor: "#4ADE80" },
   { href: "/dashboard/soil",       icon: Leaf,          label: "Check Soil",     desc: "Analyze soil health",  color: "#2e2a14", border: "#4d4020", iconColor: "#F59E0B" },
   { href: "/dashboard/weather",    icon: Cloud,         label: "Weather",        desc: "Check forecast",       color: "#142030", border: "#1e3448", iconColor: "#22D3EE" },
-  { href: "/dashboard/yield",      icon: BarChart3,     label: "Market Prices",  desc: "Today's mandi rates",  color: "#1e1a10", border: "#3d3420", iconColor: "#F59E0B" },
+  { href: "/dashboard/market",    icon: BarChart3,     label: "Market Prices",  desc: "Today's mandi rates",  color: "#1e1a10", border: "#3d3420", iconColor: "#F59E0B" },
 ];
 
 /* ── Circular gauge ── */
@@ -76,17 +91,57 @@ function HealthGauge({ score }: { score: number }) {
 /* ── Main ── */
 interface MandiRow { crop: string; unit: string; price: string; change: string; up: boolean; }
 
+interface FarmHealthMetric { score: number; status: string; has_data: boolean; }
+interface FarmHealth {
+  overall_score: number;
+  tip: string;
+  metrics: {
+    soil_health: FarmHealthMetric;
+    crop_health: FarmHealthMetric;
+    water_level: FarmHealthMetric;
+    disease_risk: FarmHealthMetric;
+  };
+}
+
 export default function DashboardPage() {
+const [activeCrop, setActiveCrop] = useState<any>(null);
+
+const loadActiveCrop = async () => {
+  try {
+
+    const res = await activeCropAPI.get();
+
+    setActiveCrop(res.data);
+
+  } catch (err) {
+
+    console.error(err);
+
+  }
+};
+
+
   const { user } = useAuth();
   const [weather, setWeather] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [mandiPrices, setMandiPrices] = useState<MandiRow[]>([]);
   const [mandiLoading, setMandiLoading] = useState(true);
-
+  const [farmHealth, setFarmHealth] = useState<FarmHealth | null>(null);
+  const [healthLoading, setHealthLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const displayName =
     user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Gurpreet Singh";
   const location = "Jalandhar, Punjab";
-  const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  // const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const today = mounted
+  ? new Intl.DateTimeFormat("en-IN", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(new Date())
+  : "";
+
 
   const loadWeather = async () => {
     try {
@@ -135,11 +190,35 @@ export default function DashboardPage() {
     } finally { setMandiLoading(false); }
   };
 
-  useEffect(() => { loadWeather(); loadMandi(); }, []);
+  const loadFarmHealth = async () => {
+    try {
+      setHealthLoading(true);
+      const res = await farmHealthAPI.getScore("Jalandhar");
+      setFarmHealth(res.data);
+    } catch {
+      /* keep null — will show fallback UI */
+    } finally { setHealthLoading(false); }
+  };
+
+  // useEffect(() => { loadWeather(); loadMandi(); loadFarmHealth(); }, []);
+
+useEffect(() => {
+
+  setMounted(true);
+
+  loadWeather();
+
+  loadMandi();
+
+  loadFarmHealth();
+
+  loadActiveCrop();
+
+}, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([loadWeather(), loadMandi()]);
+    await Promise.all([loadWeather(), loadMandi(), loadFarmHealth()]);
     setRefreshing(false);
   };
 
@@ -148,6 +227,9 @@ export default function DashboardPage() {
   const humidity  = weather?.humidity ?? 58;
   const windSpeed = weather?.wind_speed ?? 12;
   const rainChance = 20;
+  
+
+
 
   const weatherEmoji = condition.toLowerCase().includes("rain") ? "🌧️"
     : condition.toLowerCase().includes("cloud") ? "⛅" : "🌤️";
@@ -165,7 +247,14 @@ export default function DashboardPage() {
           <MapPin size={15} color="#4ADE80" />
           <span style={{ fontSize: 15, fontWeight: 600, color: "white" }}>{location}</span>
           <ChevronRight size={14} color="#64748B" />
-          <span style={{ fontSize: 12, color: "#64748B" }}>{today}</span>
+          {/* <span style={{ fontSize: 12, color: "#64748B" }}>{today}</span> */}
+
+          <span
+  suppressHydrationWarning
+  style={{ fontSize: 12, color: "#64748B" }}
+>
+  {today}
+</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button onClick={handleRefresh} style={{
@@ -246,28 +335,51 @@ export default function DashboardPage() {
           background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
           borderRadius: 18, padding: 20,
         }}>
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Farm Health Score</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            <HealthGauge score={82} />
-            <div style={{ flex: 1 }}>
-              {[
-                { label: "Soil Health", status: "Good",   color: "#4ADE80" },
-                { label: "Crop Health", status: "Good",   color: "#4ADE80" },
-                { label: "Water Level", status: "Medium", color: "#F59E0B" },
-                { label: "Disease Risk",status: "Low",    color: "#4ADE80" },
-              ].map(({ label, status, color }) => (
-                <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, fontSize: 12 }}>
-                  <span style={{ color: "#94A3B8", display: "flex", alignItems: "center", gap: 5 }}>
-                    <Leaf size={12} color={color} /> {label}
-                  </span>
-                  <span style={{ color, fontWeight: 600 }}>{status}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <span style={{ fontSize: 14, fontWeight: 700 }}>Farm Health Score</span>
+            {farmHealth && !farmHealth.metrics.soil_health.has_data && (
+              <span style={{ fontSize: 10, color: "#F59E0B", background: "rgba(245,158,11,0.12)", padding: "2px 8px", borderRadius: 20, border: "1px solid rgba(245,158,11,0.25)" }}>📊 Scan soil for better accuracy</span>
+            )}
+          </div>
+          {healthLoading ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 120, color: "#64748B", fontSize: 12 }}>Loading health score…</div>
+          ) : (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                <HealthGauge score={farmHealth?.overall_score ?? 72} />
+                <div style={{ flex: 1 }}>
+                  {([
+                    { key: "soil_health",  label: "Soil Health"  },
+                    { key: "crop_health",  label: "Crop Health"  },
+                    { key: "water_level",  label: "Water Level"  },
+                    { key: "disease_risk", label: "Disease Risk" },
+                  ] as { key: keyof FarmHealth["metrics"]; label: string }[]).map(({ key, label }) => {
+                    const m = farmHealth?.metrics?.[key];
+                    const status = m?.status ?? "—";
+                    const color =
+                      status === "Excellent" || status === "High" && key === "water_level" ? "#4ADE80"
+                      : status === "Good" || status === "High" ? "#4ADE80"
+                      : status === "Fair" || status === "Medium" ? "#F59E0B"
+                      : status === "Low" && key === "disease_risk" ? "#4ADE80"
+                      : status === "Low" ? "#F87171"
+                      : status === "Poor" ? "#F87171"
+                      : "#64748B";
+                    return (
+                      <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, fontSize: 12 }}>
+                        <span style={{ color: "#94A3B8", display: "flex", alignItems: "center", gap: 5 }}>
+                          <Leaf size={12} color={color} /> {label}
+                        </span>
+                        <span style={{ color, fontWeight: 600 }}>{status}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-          </div>
-          <div style={{ marginTop: 12, textAlign: "center", fontSize: 12, color: "#4ADE80" }}>
-            Your farm is in good condition. Keep it up!
-          </div>
+              </div>
+              <div style={{ marginTop: 12, textAlign: "center", fontSize: 12, color: "#4ADE80" }}>
+                {farmHealth?.tip ?? "Your farm is in good condition. Keep it up!"}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Smart Alerts */}
@@ -363,8 +475,8 @@ export default function DashboardPage() {
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Active Crop</div>
           <div style={{ display: "flex", gap: 14 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 4 }}>Wheat</div>
-              <div style={{ fontSize: 12, color: "#64748B", marginBottom: 10 }}>Sowing Date: 12 Nov 2025</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 4 }}>{activeCrop?.crop || "Wheat"}</div>
+              <div style={{ fontSize: 12, color: "#64748B", marginBottom: 10 }}>Sowing Date: {activeCrop?.sowing_date || "12 Nov 2025"}</div>
               <span style={{
                 display: "inline-block", padding: "3px 10px", borderRadius: 20,
                 background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.3)",
@@ -377,7 +489,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <div style={{ color: "#64748B", marginBottom: 2 }}>Expected Harvest</div>
-                  <div style={{ color: "white", fontWeight: 600 }}>15 May 2026</div>
+                  <div style={{ color: "white", fontWeight: 600 }}>{activeCrop?.expected_harvest || "15 May 2026"}</div>
                 </div>
               </div>
               <div style={{ marginTop: 14 }}>
@@ -386,11 +498,11 @@ export default function DashboardPage() {
                   background: "rgba(255,255,255,0.08)", overflow: "hidden",
                 }}>
                   <div style={{
-                    width: "68%", height: "100%", borderRadius: 4,
+                  width: `${activeCrop?.progress || 68}%`, height: "100%", borderRadius: 4,
                     background: "linear-gradient(90deg, #4ADE80, #22D3EE)",
                   }} />
                 </div>
-                <div style={{ fontSize: 11, color: "#64748B", marginTop: 4, textAlign: "right" }}>68%</div>
+                <div style={{ fontSize: 11, color: "#64748B", marginTop: 4, textAlign: "right" }}>{activeCrop?.progress || 68}%</div>
               </div>
             </div>
             <div style={{
@@ -408,7 +520,7 @@ export default function DashboardPage() {
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <span style={{ fontSize: 14, fontWeight: 700 }}>Market Prices (Today)</span>
-            <Link href="/dashboard/yield" style={{ fontSize: 12, color: "#4ADE80", textDecoration: "none" }}>View All</Link>
+            <Link href="/dashboard/market" style={{ fontSize: 12, color: "#4ADE80", textDecoration: "none" }}>View All</Link>
           </div>
           {mandiLoading ? (
             <div style={{ textAlign: "center", padding: "20px 0", color: "#64748B", fontSize: 12 }}>Loading live prices…</div>
@@ -453,3 +565,4 @@ export default function DashboardPage() {
     </motion.div>
   );
 }
+

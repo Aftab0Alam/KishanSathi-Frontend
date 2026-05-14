@@ -7,7 +7,7 @@ import {
   Home, Camera, Leaf, Cloud, MessageCircle, BarChart3,
   FlaskConical, FileText, Bell, LogOut, ShieldCheck,
   ChevronLeft, ChevronRight, Sprout, Layers,
-  User, Settings, ChevronDown, Loader2,
+  User, Settings, ChevronDown, Loader2, ShoppingCart,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -17,6 +17,7 @@ const navItems = [
   { href: "/dashboard/soil",         icon: Layers,        label: "Soil Check",           color: "#10B981" },
   { href: "/dashboard/fertilizer",   icon: FlaskConical,  label: "Fertilizer Advisor",   color: "#FBBF24" },
   { href: "/dashboard/weather",      icon: Cloud,         label: "Weather",              color: "#22D3EE" },
+  { href: "/dashboard/market",       icon: ShoppingCart,  label: "Market Prices",       color: "#FBBF24" },
   { href: "/dashboard/yield",        icon: BarChart3,     label: "Yield Prediction",     color: "#F59E0B" },
   { href: "/dashboard/chat",         icon: MessageCircle, label: "AI Chat Assistant",    color: "#4ADE80" },
   { href: "/dashboard/reports",      icon: FileText,      label: "Reports & History",    color: "#6EE7B7" },
