@@ -2,21 +2,10 @@
 const nextConfig = {
   reactStrictMode: true,
 
+  trailingSlash: true,
+
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "res.cloudinary.com",
-      },
-      {
-        protocol: "https",
-        hostname: "openweathermap.org",
-      },
-      {
-        protocol: "https",
-        hostname: "lh3.googleusercontent.com",
-      },
-    ],
+    unoptimized: true,
   },
 };
 
